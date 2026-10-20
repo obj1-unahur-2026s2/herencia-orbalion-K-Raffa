@@ -1,0 +1,196 @@
+import orbalion.*
+
+describe "Checkpoint 1 - Energía total de equipos" {
+
+  const entrenador = new Entrenador(ciclosSolares = 5, enSintonia = true, precision = 50, rol = guiaMental)
+
+  test "un entrenador no puede tener un rol distinto a los autorizados por la FOZ" {
+    assert.throwsExceptionWithMessage("Rol no homologado por la FOZ", {
+      new Entrenador(ciclosSolares = 5, enSintonia = true, precision = 50, rol = "Delantero")
+    })
+  }
+
+  test "no se le puede cambiar el rol a un entrenador por uno no homologado" {
+    assert.throwsExceptionWithMessage("Rol no homologado por la FOZ", { entrenador.rol("Delantero") })
+  }
+
+  test "un equipo luminico con radiacion mayor a 5000 y sin tecnologias activas tiene como energia total su energia base" {
+    const equipo = new EquipoLuminico(
+      nombre = "Soles de Zyntrion", energiaBase = 1000, entrenador = entrenador,
+      tecnologias = [new Tecnologia(nombre = "Núcleo gravitacional", valorEnergetico = 300, activa = false)],
+      radiacion = 6000, cristalesSolares = []
+    )
+    assert.equals(1000, equipo.energiaTotal())
+  }
+
+  test "un equipo luminico con radiacion menor a 5000 obtiene el bono del 10%" {
+    const equipo = new EquipoLuminico(
+      nombre = "Soles de Zyntrion", energiaBase = 1000, entrenador = entrenador,
+      tecnologias = [new Tecnologia(nombre = "Núcleo gravitacional", valorEnergetico = 200)],
+      radiacion = 4000, cristalesSolares = []
+    )
+    assert.equals(1320, equipo.energiaTotal())
+  }
+
+  test "un equipo sintetico con 6 modulos aplica la penalizacion del 20%" {
+    const equipo = new EquipoSintetico(
+      nombre = "Androides", energiaBase = 1000, entrenador = entrenador,
+      procesamientoCentral = 500, modulosActivos = 6, certificado = true
+    )
+    assert.equals(800, equipo.energiaTotal())
+  }
+
+  test "un equipo sintetico con 4 modulos y 2 tecnologias complementarias suma correctamente los valores energeticos" {
+    const equipo = new EquipoSintetico(
+      nombre = "Androides", energiaBase = 1000, entrenador = entrenador,
+      tecnologias = [
+        new Tecnologia(nombre = "Interfaz de proyección mental", valorEnergetico = 150),
+        new Tecnologia(nombre = "Cámara de fusión energética", valorEnergetico = 250)
+      ],
+      procesamientoCentral = 500, modulosActivos = 4, certificado = true
+    )
+    assert.equals(1400, equipo.energiaTotal())
+  }
+}
+
+describe "Checkpoint 2 - Entrenadores de élite galáctica" {
+
+  test "un estratega cuantico con 12 ciclos y precision 90 es de elite galactica" {
+    const entrenador = new Entrenador(ciclosSolares = 12, enSintonia = false, precision = 90, rol = estrategaCuantico)
+    assert.that(entrenador.esEliteGalactico())
+  }
+
+  test "un estratega cuantico con 12 ciclos y precision 80 no es de elite galactica" {
+    const entrenador = new Entrenador(ciclosSolares = 12, enSintonia = true, precision = 80, rol = estrategaCuantico)
+    assert.notThat(entrenador.esEliteGalactico())
+  }
+
+  test "un arquitecto de energia con 11 ciclos pero sin sintonia no es de elite galactica" {
+    const entrenador = new Entrenador(ciclosSolares = 11, enSintonia = false, precision = 90, rol = arquitectoDeEnergia)
+    assert.notThat(entrenador.esEliteGalactico())
+  }
+
+  test "un arquitecto de energia con 11 ciclos y en sintonia es de elite galactica" {
+    const entrenador = new Entrenador(ciclosSolares = 11, enSintonia = true, precision = 10, rol = arquitectoDeEnergia)
+    assert.that(entrenador.esEliteGalactico())
+  }
+
+  test "un guia mental con 15 ciclos siempre es de elite galactica" {
+    const entrenador = new Entrenador(ciclosSolares = 15, enSintonia = false, precision = 0, rol = guiaMental)
+    assert.that(entrenador.esEliteGalactico())
+  }
+
+  test "un guia mental con 10 ciclos no es de elite galactica" {
+    const entrenador = new Entrenador(ciclosSolares = 10, enSintonia = true, precision = 100, rol = guiaMental)
+    assert.notThat(entrenador.esEliteGalactico())
+  }
+}
+
+describe "Checkpoint 3 - Equipos de prestigio universal" {
+
+  const entrenadorElite = new Entrenador(ciclosSolares = 15, enSintonia = true, precision = 90, rol = guiaMental)
+  const entrenadorComun = new Entrenador(ciclosSolares = 3, enSintonia = true, precision = 90, rol = guiaMental)
+
+  method luminico(entrenador, cristales, tecnologias) = new EquipoLuminico(
+    nombre = "Soles de Zyntrion", energiaBase = 1000, entrenador = entrenador,
+    tecnologias = tecnologias, radiacion = 6000, cristalesSolares = cristales
+  )
+
+  method sintetico(certificado, modulos, tecnologias) = new EquipoSintetico(
+    nombre = "Androides", energiaBase = 1000, entrenador = entrenadorComun,
+    tecnologias = tecnologias, procesamientoCentral = 500, modulosActivos = modulos, certificado = certificado
+  )
+
+  test "un equipo luminico con 3 cristales, entrenador de elite y una tecnologia activa es de prestigio universal" {
+    const equipo = self.luminico(entrenadorElite, ["Aurora", "Helios", "Solaris"], [
+      new Tecnologia(nombre = "Núcleo gravitacional", valorEnergetico = 100),
+      new Tecnologia(nombre = "Cámara de fusión", valorEnergetico = 100, activa = false)
+    ])
+    assert.that(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo luminico con 2 cristales no es de prestigio universal" {
+    const equipo = self.luminico(entrenadorElite, ["Aurora", "Helios"], [new Tecnologia(nombre = "Núcleo", valorEnergetico = 100)])
+    assert.notThat(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo luminico con entrenador que no es de elite no es de prestigio universal" {
+    const equipo = self.luminico(entrenadorComun, ["Aurora", "Helios", "Solaris"], [new Tecnologia(nombre = "Núcleo", valorEnergetico = 100)])
+    assert.notThat(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo luminico sin tecnologias activas no es de prestigio universal" {
+    const equipo = self.luminico(entrenadorElite, ["Aurora", "Helios", "Solaris"], [new Tecnologia(nombre = "Núcleo", valorEnergetico = 100, activa = false)])
+    assert.notThat(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo sintetico certificado con 4 modulos y todas las tecnologias activas es de prestigio universal" {
+    const equipo = self.sintetico(true, 4, [
+      new Tecnologia(nombre = "Interfaz mental", valorEnergetico = 100),
+      new Tecnologia(nombre = "Cámara de fusión", valorEnergetico = 100)
+    ])
+    assert.that(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo sintetico no certificado no es de prestigio universal" {
+    const equipo = self.sintetico(false, 4, [new Tecnologia(nombre = "Interfaz mental", valorEnergetico = 100)])
+    assert.notThat(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo sintetico con 3 modulos no es de prestigio universal" {
+    const equipo = self.sintetico(true, 3, [new Tecnologia(nombre = "Interfaz mental", valorEnergetico = 100)])
+    assert.notThat(equipo.esDePrestigioUniversal())
+  }
+
+  test "un equipo sintetico con alguna tecnologia inactiva no es de prestigio universal" {
+    const equipo = self.sintetico(true, 4, [
+      new Tecnologia(nombre = "Interfaz mental", valorEnergetico = 100),
+      new Tecnologia(nombre = "Cámara de fusión", valorEnergetico = 100, activa = false)
+    ])
+    assert.notThat(equipo.esDePrestigioUniversal())
+  }
+}
+
+describe "Checkpoint 4 - Equipos etéricos" {
+
+  const entrenador = new Entrenador(ciclosSolares = 5, enSintonia = true, precision = 50, rol = guiaMental)
+
+  method eterico(fluctuacion, portales, tecnologias) = new EquipoEterico(
+    nombre = "Espectros", energiaBase = 1000, entrenador = entrenador,
+    tecnologias = tecnologias, fluctuacionDimensional = fluctuacion, portalesAbiertos = portales
+  )
+
+  method dosTecnologiasActivas() = [
+    new Tecnologia(nombre = "Núcleo gravitacional", valorEnergetico = 100),
+    new Tecnologia(nombre = "Cámara de fusión", valorEnergetico = 100)
+  ]
+
+  test "un equipo eterico con 3 portales, fluctuacion 80 y 2 tecnologias activas es de prestigio universal" {
+    assert.that(self.eterico(80, 3, self.dosTecnologiasActivas()).esDePrestigioUniversal())
+  }
+
+  test "un equipo eterico de prestigio universal suma un 15% a su energia total" {
+    assert.equals(1380, self.eterico(80, 3, self.dosTecnologiasActivas()).energiaTotal())
+  }
+
+  test "un equipo eterico con fluctuacion 75 no es de prestigio y no suma el 15%" {
+    const equipo = self.eterico(75, 3, self.dosTecnologiasActivas())
+    assert.notThat(equipo.esDePrestigioUniversal())
+    assert.equals(1200, equipo.energiaTotal())
+  }
+
+  test "un equipo eterico con 1 portal no es de prestigio y no suma el 15%" {
+    const equipo = self.eterico(80, 1, self.dosTecnologiasActivas())
+    assert.notThat(equipo.esDePrestigioUniversal())
+    assert.equals(1200, equipo.energiaTotal())
+  }
+
+  test "un equipo eterico con una sola tecnologia activa no es de prestigio y no suma el 15%" {
+    const equipo = self.eterico(80, 3, [
+      new Tecnologia(nombre = "Núcleo gravitacional", valorEnergetico = 100),
+      new Tecnologia(nombre = "Cámara de fusión", valorEnergetico = 100, activa = false)
+    ])
+    assert.notThat(equipo.esDePrestigioUniversal())
+    assert.equals(1100, equipo.energiaTotal())
+  }
+}
